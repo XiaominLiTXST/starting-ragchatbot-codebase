@@ -1,5 +1,7 @@
-import anthropic
 from typing import List, Optional
+
+import anthropic
+
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
@@ -36,16 +38,15 @@ Provide only the direct answer to what was asked.
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
 
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
 
-    def generate_response(self, query: str,
-                          conversation_history: Optional[str] = None,
-                          tools: Optional[List] = None,
-                          tool_manager=None) -> str:
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: Optional[str] = None,
+        tools: Optional[List] = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with up to MAX_TOOL_ROUNDS sequential tool calls.
 
@@ -91,18 +92,22 @@ Provide only the direct answer to what was asked.
                 if block.type == "tool_use":
                     try:
                         result = tool_manager.execute_tool(block.name, **block.input)
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": result,
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": result,
+                            }
+                        )
                     except Exception as exc:
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": f"Tool '{block.name}' raised an error: {exc}",
-                            "is_error": True,
-                        })
+                        tool_results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": block.id,
+                                "content": f"Tool '{block.name}' raised an error: {exc}",
+                                "is_error": True,
+                            }
+                        )
                         execution_failed = True
                         break
 
