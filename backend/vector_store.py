@@ -99,20 +99,32 @@ class VectorStore:
         except Exception as e:
             return SearchResults.empty(f"Search error: {str(e)}")
     
+    # Maximum L2 distance accepted as a "real" course name match.
+    # Empirical data (all-MiniLM-L6-v2 on the current catalog):
+    #   legitimate short abbreviation "MCP"  → 1.55
+    #   nonsense string                       → 1.74+
+    _COURSE_MATCH_THRESHOLD = 1.65
+
     def _resolve_course_name(self, course_name: str) -> Optional[str]:
-        """Use vector search to find best matching course by name"""
+        """Use vector search to find best matching course by name.
+
+        Returns None when the closest match is too far away to be considered
+        a real course name, preventing silent fallback to an unrelated course.
+        """
         try:
             results = self.course_catalog.query(
                 query_texts=[course_name],
                 n_results=1
             )
-            
+
             if results['documents'][0] and results['metadatas'][0]:
-                # Return the title (which is now the ID)
+                distance = results['distances'][0][0]
+                if distance > self._COURSE_MATCH_THRESHOLD:
+                    return None
                 return results['metadatas'][0][0]['title']
         except Exception as e:
             print(f"Error resolving course name: {e}")
-        
+
         return None
     
     def _build_filter(self, course_title: Optional[str], lesson_number: Optional[int]) -> Optional[Dict]:
@@ -246,6 +258,34 @@ class VectorStore:
             print(f"Error getting course link: {e}")
             return None
     
+    def get_course_outline(self, course_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Resolve a course name semantically and return its outline metadata.
+
+        Returns a dict with title, course_link, and lessons list, or None if not found.
+        """
+        import json
+        course_title = self._resolve_course_name(course_name)
+        if not course_title:
+            return None
+        try:
+            results = self.course_catalog.get(ids=[course_title])
+            if not results or not results.get('metadatas') or not results['metadatas']:
+                return None
+            meta = results['metadatas'][0]
+            lessons = json.loads(meta.get('lessons_json', '[]'))
+            return {
+                'title': meta.get('title', course_title),
+                'course_link': meta.get('course_link'),
+                'lessons': [
+                    {'lesson_number': l['lesson_number'], 'lesson_title': l['lesson_title']}
+                    for l in lessons
+                ]
+            }
+        except Exception as e:
+            print(f"Error getting course outline: {e}")
+            return None
+
     def get_lesson_link(self, course_title: str, lesson_number: int) -> Optional[str]:
         """Get lesson link for a given course title and lesson number"""
         import json

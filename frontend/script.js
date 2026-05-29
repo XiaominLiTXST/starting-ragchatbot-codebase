@@ -28,8 +28,10 @@ function setupEventListeners() {
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
-    
-    
+
+    // New chat button
+    document.getElementById('newChatButton').addEventListener('click', createNewSession);
+
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
         button.addEventListener('click', (e) => {
@@ -82,7 +84,7 @@ async function sendMessage() {
 
         // Replace loading message with response
         loadingMessage.remove();
-        addMessage(data.answer, 'assistant', data.sources);
+        addMessage(data.answer, 'assistant', data.sources, false, data.source_links);
 
     } catch (error) {
         // Replace loading message with error
@@ -110,7 +112,7 @@ function createLoadingMessage() {
     return messageDiv;
 }
 
-function addMessage(content, type, sources = null, isWelcome = false) {
+function addMessage(content, type, sources = null, isWelcome = false, sourceLinks = null) {
     const messageId = Date.now();
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}${isWelcome ? ' welcome-message' : ''}`;
@@ -122,10 +124,24 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     let html = `<div class="message-content">${displayContent}</div>`;
     
     if (sources && sources.length > 0) {
+        const seen = new Set();
+        const sourceItems = sources
+            .map((label, i) => {
+                if (seen.has(label)) return null;
+                seen.add(label);
+                const url = sourceLinks && sourceLinks[i];
+                const lessonMatch = label.match(/Lesson\s+(\d+)$/i);
+                const shortLabel = lessonMatch ? `Lesson ${lessonMatch[1]}` : label;
+                if (url) {
+                    return `<a class="source-chip" href="${url}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(label)}"><span class="source-chip-icon">▶</span>${escapeHtml(shortLabel)}</a>`;
+                }
+                return `<span class="source-chip source-chip-no-link" title="${escapeHtml(label)}">${escapeHtml(shortLabel)}</span>`;
+            })
+            .filter(Boolean);
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${sourceItems.join('')}</div>
             </details>
         `;
     }
@@ -147,6 +163,13 @@ function escapeHtml(text) {
 // Removed removeMessage function - no longer needed since we handle loading differently
 
 async function createNewSession() {
+    if (currentSessionId) {
+        try {
+            await fetch(`${API_URL}/session/${currentSessionId}`, { method: 'DELETE' });
+        } catch (e) {
+            // ignore cleanup errors
+        }
+    }
     currentSessionId = null;
     chatMessages.innerHTML = '';
     addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
