@@ -1,6 +1,22 @@
 // API base URL - use relative path to work from any host
 const API_URL = '/api';
 
+// Theme management
+function initTheme() {
+    const saved = localStorage.getItem('theme');
+    const theme = saved || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+}
+
+initTheme();
+
 // Global state
 let currentSessionId = null;
 
@@ -15,7 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     sendButton = document.getElementById('sendButton');
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
-    
+
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
     setupEventListeners();
     createNewSession();
     loadCourseStats();
