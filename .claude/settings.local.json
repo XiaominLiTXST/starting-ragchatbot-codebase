@@ -4,7 +4,13 @@
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_snapshot",
-      "mcp__playwright__browser_evaluate"
+      "mcp__playwright__browser_evaluate",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git -C .trees/quality_feature status)",
+      "Bash(git -C .trees/testing_feature status)",
+      "Bash(git -C .trees/ui_feature status)",
+      "Bash(git add *)"
     ]
   }
 }
