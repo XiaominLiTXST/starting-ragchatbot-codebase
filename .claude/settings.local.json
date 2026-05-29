@@ -10,7 +10,8 @@
       "Bash(git -C .trees/quality_feature status)",
       "Bash(git -C .trees/testing_feature status)",
       "Bash(git -C .trees/ui_feature status)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git merge *)"
     ]
   }
 }
