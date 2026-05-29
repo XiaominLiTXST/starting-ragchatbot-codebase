@@ -3,16 +3,17 @@ Tests verifying that AIGenerator routes content questions to CourseSearchTool
 (search_course_content) and handles the tool-use cycle correctly.
 All Anthropic API calls are mocked.
 """
-import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
-from ai_generator import AIGenerator
-from search_tools import ToolManager, CourseSearchTool
-from vector_store import SearchResults
 
+from unittest.mock import MagicMock, patch
+
+from ai_generator import AIGenerator
+from search_tools import CourseSearchTool, ToolManager
+from vector_store import SearchResults
 
 # ---------------------------------------------------------------------------
 # Helpers to build mock Anthropic responses
 # ---------------------------------------------------------------------------
+
 
 def _text_response(text: str):
     """Simulate a plain-text (no tool-use) response."""
@@ -56,6 +57,7 @@ def _make_tool_manager(search_result: str = "some content"):
 # ---------------------------------------------------------------------------
 # Routing: content questions must use search_course_content
 # ---------------------------------------------------------------------------
+
 
 def test_content_question_triggers_search_tool():
     """Claude should request search_course_content for a content query."""
@@ -103,7 +105,8 @@ def test_search_tool_called_with_correct_query():
     # The second call's messages should contain the user-role tool_result
     second_call_messages = instance.messages.create.call_args_list[1][1]["messages"]
     tool_result_msgs = [
-        m for m in second_call_messages
+        m
+        for m in second_call_messages
         if m.get("role") == "user"
         and isinstance(m.get("content"), list)
         and m["content"][0].get("type") == "tool_result"
@@ -148,6 +151,7 @@ def test_tool_result_content_included_in_follow_up():
 # No-tool path: general knowledge questions
 # ---------------------------------------------------------------------------
 
+
 def test_general_knowledge_skips_tool_call():
     """For a general question with no tools configured, Claude answers directly."""
     direct_response = _text_response("Python is a programming language.")
@@ -186,6 +190,7 @@ def test_no_tool_execution_when_stop_reason_is_end_turn():
 # ---------------------------------------------------------------------------
 # Error resilience
 # ---------------------------------------------------------------------------
+
 
 def test_unknown_tool_name_does_not_crash():
     """If Claude requests a non-existent tool, ToolManager returns an error string
@@ -230,6 +235,7 @@ def test_conversation_history_included_in_system_prompt():
 # ---------------------------------------------------------------------------
 # Sequential tool calling (new multi-round behaviour)
 # ---------------------------------------------------------------------------
+
 
 def test_two_sequential_tool_calls_make_three_api_calls():
     """Two tool_use rounds followed by a synthesis call = 3 total API calls."""

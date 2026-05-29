@@ -2,14 +2,16 @@
 Tests for CourseSearchTool.execute() in search_tools.py.
 All vector store interactions are mocked so no ChromaDB connection is needed.
 """
+
 from unittest.mock import MagicMock
+
 from search_tools import CourseSearchTool
 from vector_store import SearchResults
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_store(documents=None, metadata=None, error=None):
     """Return a VectorStore mock whose search() returns controlled results."""
@@ -29,6 +31,7 @@ def make_store(documents=None, metadata=None, error=None):
 # ---------------------------------------------------------------------------
 # Basic execution paths
 # ---------------------------------------------------------------------------
+
 
 def test_execute_returns_formatted_results():
     store = make_store(
@@ -63,6 +66,7 @@ def test_execute_returns_error_message_when_store_errors():
 # ---------------------------------------------------------------------------
 # Filter forwarding
 # ---------------------------------------------------------------------------
+
 
 def test_execute_passes_course_name_to_store():
     store = make_store(documents=[], metadata=[])
@@ -120,6 +124,7 @@ def test_execute_empty_message_includes_lesson_filter_info():
 # Source tracking
 # ---------------------------------------------------------------------------
 
+
 def test_execute_populates_last_sources_on_results():
     store = make_store(
         documents=["content here"],
@@ -169,6 +174,7 @@ def test_execute_last_sources_falls_back_to_course_link_when_no_lesson():
 # ---------------------------------------------------------------------------
 # Multi-result formatting
 # ---------------------------------------------------------------------------
+
 
 def test_execute_multiple_results_separated_by_blank_lines():
     store = make_store(

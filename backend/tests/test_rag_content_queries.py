@@ -3,13 +3,15 @@ Integration tests for the RAG system's content-query pipeline.
 Uses the real ChromaDB store (populated at startup) but mocks the Anthropic API
 so these tests run without network access and without consuming API credits.
 """
-import pytest
+
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def rag():
@@ -17,10 +19,13 @@ def rag():
     Build a real RAGSystem against the production ChromaDB on disk.
     The Anthropic client is NOT mocked here — we mock it per-test via patch.
     """
-    import sys, os
+    import os
+    import sys
+
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     from config import config
     from rag_system import RAGSystem
+
     return RAGSystem(config)
 
 
@@ -51,6 +56,7 @@ def _make_response(stop_reason: str, *content_blocks):
 # 1. CourseSearchTool.execute() against real ChromaDB
 # ---------------------------------------------------------------------------
 
+
 class TestCourseSearchToolIntegration:
     """These tests run .execute() directly on the real vector store."""
 
@@ -67,9 +73,7 @@ class TestCourseSearchToolIntegration:
         assert "MCP" in result
 
     def test_filtered_search_by_lesson_number(self, rag):
-        result = rag.search_tool.execute(
-            query="lesson content", lesson_number=1
-        )
+        result = rag.search_tool.execute(query="lesson content", lesson_number=1)
         # Lesson 1 exists in every course, so we expect real content
         assert isinstance(result, str)
         assert len(result) > 0
@@ -106,6 +110,7 @@ class TestCourseSearchToolIntegration:
 # 2. RAGSystem.query() routes content questions through search tool
 # ---------------------------------------------------------------------------
 
+
 class TestRAGContentQueryPipeline:
 
     def test_content_query_calls_search_tool_and_returns_response(self, rag):
@@ -115,15 +120,17 @@ class TestRAGContentQueryPipeline:
         """
         tool_resp = _make_response(
             "tool_use",
-            _tool_use_block("search_course_content", "t1", {"query": "what is MCP"})
+            _tool_use_block("search_course_content", "t1", {"query": "what is MCP"}),
         )
         final_resp = _make_response(
-            "end_turn",
-            _text_block("MCP is the Model Context Protocol.")
+            "end_turn", _text_block("MCP is the Model Context Protocol.")
         )
 
-        with patch.object(rag.ai_generator.client.messages, "create",
-                          side_effect=[tool_resp, final_resp]):
+        with patch.object(
+            rag.ai_generator.client.messages,
+            "create",
+            side_effect=[tool_resp, final_resp],
+        ):
             answer, sources = rag.query("What is MCP?")
 
         assert answer == "MCP is the Model Context Protocol."
@@ -134,13 +141,17 @@ class TestRAGContentQueryPipeline:
     def test_content_query_sources_have_label_and_url(self, rag):
         tool_resp = _make_response(
             "tool_use",
-            _tool_use_block("search_course_content", "t2",
-                            {"query": "query expansion technique"})
+            _tool_use_block(
+                "search_course_content", "t2", {"query": "query expansion technique"}
+            ),
         )
         final_resp = _make_response("end_turn", _text_block("Query expansion is..."))
 
-        with patch.object(rag.ai_generator.client.messages, "create",
-                          side_effect=[tool_resp, final_resp]):
+        with patch.object(
+            rag.ai_generator.client.messages,
+            "create",
+            side_effect=[tool_resp, final_resp],
+        ):
             _, sources = rag.query("Explain query expansion")
 
         for src in sources:
@@ -150,14 +161,24 @@ class TestRAGContentQueryPipeline:
     def test_content_query_with_course_filter(self, rag):
         tool_resp = _make_response(
             "tool_use",
-            _tool_use_block("search_course_content", "t3",
-                            {"query": "client server", "course_name": "MCP"})
+            _tool_use_block(
+                "search_course_content",
+                "t3",
+                {"query": "client server", "course_name": "MCP"},
+            ),
         )
-        final_resp = _make_response("end_turn", _text_block("The MCP client connects..."))
+        final_resp = _make_response(
+            "end_turn", _text_block("The MCP client connects...")
+        )
 
-        with patch.object(rag.ai_generator.client.messages, "create",
-                          side_effect=[tool_resp, final_resp]):
-            answer, sources = rag.query("How does the MCP client connect to the server?")
+        with patch.object(
+            rag.ai_generator.client.messages,
+            "create",
+            side_effect=[tool_resp, final_resp],
+        ):
+            answer, sources = rag.query(
+                "How does the MCP client connect to the server?"
+            )
 
         assert isinstance(answer, str)
         assert len(answer) > 0
@@ -167,25 +188,34 @@ class TestRAGContentQueryPipeline:
         for i, tid in enumerate(["ta", "tb"]):
             tool_resp = _make_response(
                 "tool_use",
-                _tool_use_block("search_course_content", tid, {"query": "MCP"})
+                _tool_use_block("search_course_content", tid, {"query": "MCP"}),
             )
             final_resp = _make_response("end_turn", _text_block(f"Answer {i}"))
 
-            with patch.object(rag.ai_generator.client.messages, "create",
-                              side_effect=[tool_resp, final_resp]):
+            with patch.object(
+                rag.ai_generator.client.messages,
+                "create",
+                side_effect=[tool_resp, final_resp],
+            ):
                 _, sources = rag.query("MCP question")
 
             # sources come from a single query — should not accumulate
             labels = [s["label"] for s in sources]
             unique_labels = set(labels)
-            assert len(labels) == len(unique_labels) or len(sources) <= rag.vector_store.max_results
+            assert (
+                len(labels) == len(unique_labels)
+                or len(sources) <= rag.vector_store.max_results
+            )
 
     def test_query_without_tool_use_still_returns_string(self, rag):
         """Claude answers directly (no tool) — response must still be a string."""
-        direct_resp = _make_response("end_turn", _text_block("That is a general question."))
+        direct_resp = _make_response(
+            "end_turn", _text_block("That is a general question.")
+        )
 
-        with patch.object(rag.ai_generator.client.messages, "create",
-                          return_value=direct_resp):
+        with patch.object(
+            rag.ai_generator.client.messages, "create", return_value=direct_resp
+        ):
             answer, sources = rag.query("What is 2 + 2?")
 
         assert isinstance(answer, str)
@@ -203,13 +233,16 @@ class TestRAGContentQueryPipeline:
 
         # Second turn — capture the system parameter sent to the API
         r2 = _make_response("end_turn", _text_block("Yes, lesson 5 covers the client."))
-        with patch.object(rag.ai_generator.client.messages, "create",
-                          return_value=r2) as mock_create:
+        with patch.object(
+            rag.ai_generator.client.messages, "create", return_value=r2
+        ) as mock_create:
             rag.query("Tell me about lesson 5", session_id=session_id)
 
         call_kwargs = mock_create.call_args[1]
         assert "Previous conversation" in call_kwargs["system"]
-        assert "MCP" in call_kwargs["system"] or "lesson" in call_kwargs["system"].lower()
+        assert (
+            "MCP" in call_kwargs["system"] or "lesson" in call_kwargs["system"].lower()
+        )
 
         rag.session_manager.clear_session(session_id)
 
@@ -217,13 +250,17 @@ class TestRAGContentQueryPipeline:
         """Even if the search returns empty, the pipeline must not raise."""
         tool_resp = _make_response(
             "tool_use",
-            _tool_use_block("search_course_content", "t_empty",
-                            {"query": "zzz nonexistent zzz"})
+            _tool_use_block(
+                "search_course_content", "t_empty", {"query": "zzz nonexistent zzz"}
+            ),
         )
         final_resp = _make_response("end_turn", _text_block("I found no content."))
 
-        with patch.object(rag.ai_generator.client.messages, "create",
-                          side_effect=[tool_resp, final_resp]):
+        with patch.object(
+            rag.ai_generator.client.messages,
+            "create",
+            side_effect=[tool_resp, final_resp],
+        ):
             answer, _ = rag.query("Tell me about zzz nonexistent zzz")
 
         assert isinstance(answer, str)
